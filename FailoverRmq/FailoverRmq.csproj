@@ -3,11 +3,11 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>shumutun</Authors>
-    <PackageId>FailoverRmq_shumutun</PackageId>
-    <Description>Failover client for RabbitMQ</Description>
+    <PackageId>FailoverRmq</PackageId>
+    <Description>Scalable and failover connection to RabbitMQ</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl></PackageProjectUrl>
-    <RepositoryUrl>https://github.com/shumutun/failover-rmq</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/shumutun/failover-rmq</PackageProjectUrl>
+    <RepositoryUrl></RepositoryUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageTags>rmq</PackageTags>
   </PropertyGroup>
