@@ -1,6 +1,6 @@
 ﻿using FailoverRmq.Connection;
 using FailoverRmq.Serialization;
-using Microsoft.Extensions.Logging;
+using NLog;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
                 _procmessage = procmessage ?? throw new ArgumentNullException(nameof(procmessage));
                 _stop = stop ?? throw new ArgumentNullException(nameof(stop));
-                _logger.LogInformation("New consumer starting");
+                _logger.Info("New consumer starting");
 
                 var dc = (DataContractAttribute)typeof(TMessage).GetCustomAttributes(typeof(DataContractAttribute), false).FirstOrDefault() ?? throw new Exception("Data contract must have a DataContract attribute");
                 _queueName = index.HasValue ? $"{dc.QueueName}-domain{index}" : dc.QueueName;
@@ -45,7 +45,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 if (ModelBuilder.QueueDeclare(Model, _queueName))
                 {
                     _consumerTag = Model.BasicConsume(_queueName, false, this);
-                    _logger.LogInformation($"New consumer {_consumerTag} started and binded to queue {_queueName}");
+                    _logger.Info($"New consumer {_consumerTag} started and binded to queue {_queueName}");
                     return true;
                 }
                 return false;
@@ -53,20 +53,20 @@ namespace FailoverRmq.Consumers.RabbitMq
 
             public override async Task HandleBasicConsumeOk(string consumerTag)
             {
-                _logger.LogInformation($"Consumer {consumerTag} is conected to message broker");
+                _logger.Info($"Consumer {consumerTag} is conected to message broker");
                 await base.HandleBasicConsumeOk(consumerTag);
             }
 
             public override async Task OnCancel(params string[] consumerTags)
             {
-                _logger.LogInformation($"Consumer {consumerTags.Aggregate(new StringBuilder(), (a, i) => a.Append($"{i};")).ToString().TrimEnd(';')} is canceled");
+                _logger.Info($"Consumer {consumerTags.Aggregate(new StringBuilder(), (a, i) => a.Append($"{i};")).ToString().TrimEnd(';')} is canceled");
                 await base.OnCancel();
                 Stop(true);
             }
 
             public override async Task HandleModelShutdown(object model, ShutdownEventArgs reason)
             {
-                _logger.LogError($"Consumer {_consumerTag} model is shutdown ({reason})");
+                _logger.Error($"Consumer {_consumerTag} model is shutdown ({reason})");
                 await base.HandleModelShutdown(model, reason);
                 Stop(true);
             }
@@ -80,7 +80,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Consumer {consumerTag} processed message {deliveryTag} with error");
+                    _logger.Error(ex, $"Consumer {consumerTag} processed message {deliveryTag} with error");
                     Model.BasicNack(deliveryTag, false, true);
                 }
             }
@@ -89,7 +89,7 @@ namespace FailoverRmq.Consumers.RabbitMq
             {
                 if (initializedByRMQ)
                     _stop();
-                _logger.LogInformation($"Consumer {_consumerTag} is stoped");
+                _logger.Info($"Consumer {_consumerTag} is stoped");
                 Model?.Dispose();
             }
         }
@@ -126,7 +126,7 @@ namespace FailoverRmq.Consumers.RabbitMq
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Can't create consumer");
+                _logger.Error(ex, "Can't create consumer");
                 return false;
             }
         }

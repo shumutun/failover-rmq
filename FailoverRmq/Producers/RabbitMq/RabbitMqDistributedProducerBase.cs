@@ -1,6 +1,6 @@
 ﻿using FailoverRmq.Connection;
 using FailoverRmq.Serialization;
-using Microsoft.Extensions.Logging;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -38,7 +38,7 @@ namespace FailoverRmq.Producers.RabbitMq
                         var mod = GetStringHash(messageDomain) % (uint)parallelizeQueueTo; //Mod of a digit can't be grather then the digit
                         var index = (int)mod + 1; //Mod can be max parallelizeQueueTo - 1. Add 1 to move it back to the range!
                         _domainsIndexes.Add(messageDomain, index);
-                        logger.LogInformation($"For domain {messageDomain} assigned index {index}");
+                        logger.Info($"For domain {messageDomain} assigned index {index}");
                     }
                     finally
                     {

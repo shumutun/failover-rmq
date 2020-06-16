@@ -1,6 +1,6 @@
 ﻿using FailoverRmq.Connection;
 using FailoverRmq.Serialization;
-using Microsoft.Extensions.Logging;
+using NLog;
 using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
@@ -101,7 +101,7 @@ namespace FailoverRmq.Producers.RabbitMq
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "Message produce error");
+                    _logger.Error(e, "Message produce error");
                     tryCount++;
                     await Task.Delay(_sendTryDelay, cancellationToken);
                 }
