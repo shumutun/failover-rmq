@@ -1,4 +1,5 @@
 ﻿using FailoverRmq.Connection;
+using FailoverRmq.Connection.ConnectionManagers.RabbitMQ;
 using FailoverRmq.Serialization;
 using NLog;
 using RabbitMQ.Client;
@@ -8,9 +9,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FailoverRmq.Producers.RabbitMq
+namespace FailoverRmq.Producers.BaseProducers.RabbitMq
 {
-    public abstract class RabbitMqProducerBase<TMessage> : IProducer<TMessage>
+    internal class RabbitMqBaseProducer<TMessage> : IProducer<TMessage>
     {
         private readonly int _sendTryCount = 5;
         private readonly int _sendTryDelay = 1000;
@@ -25,14 +26,15 @@ namespace FailoverRmq.Producers.RabbitMq
         private readonly Dictionary<string, string> _declaredQueues = new Dictionary<string, string>();
         private readonly ReaderWriterLockSlim _declaredQueuesLock = new ReaderWriterLockSlim();
 
-        protected RabbitMqProducerBase(IRabbitMqConnectionManager connectionManager, ILogger logger, ISerializer<TMessage> serializer)
+        public RabbitMqBaseProducer(IRabbitMqConnectionManager connectionManager, ILogger logger, ISerializer<TMessage> serializer)
         {
             _connectionManager = connectionManager;
             _logger = logger;
             _serializer = serializer;
-            var dc = (DataContractAttribute)typeof(TMessage).GetCustomAttributes(typeof(DataContractAttribute), false).FirstOrDefault() ?? throw new Exception("Data contract must have a DataContract attribute");
-            _queueName = dc.QueueName;
-            _messageDelay = dc.Delay;
+
+            var (QueueName, Delay) = ModelBuilder.GetQueueName<TMessage>();
+            _queueName = QueueName;
+            _messageDelay = Delay;
         }
 
         private IModel GetModel()

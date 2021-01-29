@@ -1,21 +1,22 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>shumutun</Authors>
     <PackageId>FailoverRmq</PackageId>
-    <Description>Scalable and failover connection to RabbitMQ</Description>
+    <Description>Scalable and failover connection to message queues</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/shumutun/failover-rmq</PackageProjectUrl>
     <RepositoryUrl></RepositoryUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageTags>rmq</PackageTags>
-    <Version>1.1.0</Version>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.0.1" />
     <PackageReference Include="NLog" Version="4.7.2" />
-    <PackageReference Include="RabbitMQ.Client" Version="6.0.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.1.0" />
   </ItemGroup>
 
 </Project>

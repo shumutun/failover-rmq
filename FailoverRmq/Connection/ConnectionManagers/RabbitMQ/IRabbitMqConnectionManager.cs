@@ -1,6 +1,6 @@
 ﻿using RabbitMQ.Client;
 
-namespace FailoverRmq.Connection
+namespace FailoverRmq.Connection.ConnectionManagers.RabbitMQ
 {
     public interface IRabbitMqConnectionManager
     {

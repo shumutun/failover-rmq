@@ -1,4 +1,5 @@
 ﻿using FailoverRmq.Connection;
+using FailoverRmq.Connection.ConnectionManagers.RabbitMQ;
 using FailoverRmq.Serialization;
 using NLog;
 using RabbitMQ.Client;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace FailoverRmq.Consumers.RabbitMq
 {
-    public abstract class RabbitMqConsumerBase<TMessage> : IConsumer<TMessage>
+    internal class RabbitMqBaseConsumer<TMessage> : IConsumer<TMessage>
     {
         private class BasicConsumer : AsyncDefaultBasicConsumer
         {
@@ -28,10 +29,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 _procmessage = procmessage ?? throw new ArgumentNullException(nameof(procmessage));
                 _stop = stop ?? throw new ArgumentNullException(nameof(stop));
                 _logger.Info("New consumer starting");
-
-                var dc = (DataContractAttribute)typeof(TMessage).GetCustomAttributes(typeof(DataContractAttribute), false).FirstOrDefault() ?? throw new Exception("Data contract must have a DataContract attribute");
-                _queueName = index.HasValue ? $"{dc.QueueName}-domain{index}" : dc.QueueName;
-
+                _queueName = ModelBuilder.GetQueueName<TMessage>(index);
                 ConfigureChannel();
             }
 
@@ -97,17 +95,18 @@ namespace FailoverRmq.Consumers.RabbitMq
         private readonly IRabbitMqConnectionManager _connectionManager;
         private readonly ILogger _logger;
         private readonly ISerializer<TMessage> _serializer;
+        private readonly Func<TMessage, CancellationToken, Task> _procMessage;
         private readonly List<BasicConsumer> _basicConsumers = new List<BasicConsumer>();
 
         private Action<IAutorepairConsumer> _consumerStoped;
-
         private CancellationToken _cancellationToken;
 
-        protected RabbitMqConsumerBase(IRabbitMqConnectionManager connectionManager, ILogger logger, ISerializer<TMessage> serializer)
+        public RabbitMqBaseConsumer(IRabbitMqConnectionManager connectionManager, ILogger logger, ISerializer<TMessage> serializer, Func<TMessage, CancellationToken, Task> procMessage)
         {
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serializer = serializer;
+            _procMessage = procMessage;
         }
 
         protected bool Prepare(Action<IAutorepairConsumer> consumerStoped, int? queueParallelizedTo, CancellationToken cancellationToken)
@@ -144,7 +143,10 @@ namespace FailoverRmq.Consumers.RabbitMq
                 basicConsumer.Stop(false);
         }
 
-        public abstract Task ProcMessage(TMessage message, CancellationToken cancellationToken);
+        public Task ProcMessage(TMessage message, CancellationToken cancellationToken)
+        {
+            return _procMessage(message, cancellationToken);
+        }
 
         private void ConsumerStoped()
         {
