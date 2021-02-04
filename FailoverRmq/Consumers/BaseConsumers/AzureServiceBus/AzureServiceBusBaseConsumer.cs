@@ -12,7 +12,7 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
 {
     internal class AzureServiceBusBaseConsumer<TMessage> : IConsumer<TMessage>
     {
-        private class BasicConsumer
+        internal class BasicConsumer
         {
             private readonly ILogger _logger;
             private readonly Func<ReadOnlyMemory<byte>, Task> _procmessage;
@@ -25,7 +25,7 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
                 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
                 _procmessage = procmessage ?? throw new ArgumentNullException(nameof(procmessage));
                 _stop = stop ?? throw new ArgumentNullException(nameof(stop));
-                _logger.Info("New ServiceBusProcessor Starting");
+                _logger.Info("New ServiceBusProcessor starting...");
                 _queueName = ModelBuilder.GetQueueName<TMessage>(index).ToLower();
                 _processor = client.CreateProcessor(_queueName, new ServiceBusProcessorOptions
                 {
@@ -36,12 +36,13 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
                 });
                 _processor.ProcessMessageAsync += _processor_ProcessMessageAsync;
                 _processor.ProcessErrorAsync += _processor_ProcessErrorAsync;
+                _logger.Info("New ServiceBusProcessor started");
             }
 
             public async Task Run(CancellationToken cancellationToken)
             {
                 await _processor.StartProcessingAsync(cancellationToken);
-                _logger.Info($"New ServiceBusProcessor for queue {_queueName} started.");
+                _logger.Info($"New ServiceBusProcessor binded to queue {_queueName}");
             }
 
             public async Task Stop(bool initializedByAzureServiceBus)
@@ -50,8 +51,6 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
                     _stop();
                 _logger.Info($"ServiceBusProcessor for queue {_queueName} is stoped");
                 await _processor.StopProcessingAsync();
-                _processor.ProcessMessageAsync -= _processor_ProcessMessageAsync;
-                _processor.ProcessErrorAsync -= _processor_ProcessErrorAsync;
                 await _processor.DisposeAsync();
             }
 
@@ -106,11 +105,12 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
                         _basicConsumers.Add(new BasicConsumer(client, i, _logger, ProcMessage, ConsumerStoped));
                 else
                     _basicConsumers.Add(new BasicConsumer(client, null, _logger, ProcMessage, ConsumerStoped));
+                _logger.Info("ServiceBusProcessor prepeared");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Can't create consumer");
+                _logger.Error(ex, "Can't prepare ServiceBusProcessor");
                 return false;
             }
         }
@@ -131,17 +131,21 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
 
         public bool Run(Action<IAutorepairConsumer> consumerStoped, int? queueParallelizedTo, CancellationToken cancellationToken)
         {
+            _logger.Info("Trying to run ServiceBusProcessor...");
             if (!Prepare(consumerStoped, queueParallelizedTo, cancellationToken))
                 return false;
             var tasks = _basicConsumers.Select(c => c.Run(cancellationToken)).ToArray();
             Task.WaitAll(tasks);
+            _logger.Info("ServiceBusProcessor is running");
             return true;
         }
 
         public void Stop()
         {
+            _logger.Info("Trying to stop ServiceBusProcessor...");
             var tasks = _basicConsumers.Select(c => c.Stop(false)).ToArray();
             Task.WaitAll(tasks);
+            _logger.Info("ServiceBusProcessor stoped");
         }
     }
 }

@@ -12,7 +12,8 @@ namespace FailoverRmq
     {
         public static bool QueueDeclare(IModel model, string queueName, Dictionary<string, object> args = null)
         {
-            return model.QueueDeclare(queueName, true, false, false, args).QueueName == queueName;
+            var queueDeclareResult = model.QueueDeclare(queueName, true, false, false, args);
+            return queueDeclareResult.QueueName == queueName;
         }
 
         public static string GetQueueName<TMessage>(int? index)

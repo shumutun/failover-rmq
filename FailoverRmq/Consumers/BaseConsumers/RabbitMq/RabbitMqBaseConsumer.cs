@@ -28,9 +28,10 @@ namespace FailoverRmq.Consumers.RabbitMq
                 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
                 _procmessage = procmessage ?? throw new ArgumentNullException(nameof(procmessage));
                 _stop = stop ?? throw new ArgumentNullException(nameof(stop));
-                _logger.Info("New consumer starting");
+                _logger.Info("New RMQConsumer starting...");
                 _queueName = ModelBuilder.GetQueueName<TMessage>(index);
                 ConfigureChannel();
+                _logger.Info("New RMQConsumer started");
             }
 
             private void ConfigureChannel()
@@ -43,7 +44,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 if (ModelBuilder.QueueDeclare(Model, _queueName))
                 {
                     _consumerTag = Model.BasicConsume(_queueName, false, this);
-                    _logger.Info($"New consumer {_consumerTag} started and binded to queue {_queueName}");
+                    _logger.Info($"New RMQConsumer {_consumerTag} binded to queue {_queueName}");
                     return true;
                 }
                 return false;
@@ -51,20 +52,20 @@ namespace FailoverRmq.Consumers.RabbitMq
 
             public override async Task HandleBasicConsumeOk(string consumerTag)
             {
-                _logger.Info($"Consumer {consumerTag} is conected to message broker");
+                _logger.Info($"RMQConsumer {consumerTag} is conected to message broker");
                 await base.HandleBasicConsumeOk(consumerTag);
             }
 
             public override async Task OnCancel(params string[] consumerTags)
             {
-                _logger.Info($"Consumer {consumerTags.Aggregate(new StringBuilder(), (a, i) => a.Append($"{i};")).ToString().TrimEnd(';')} is canceled");
+                _logger.Info($"RMQConsumer {consumerTags.Aggregate(new StringBuilder(), (a, i) => a.Append($"{i};")).ToString().TrimEnd(';')} is canceled");
                 await base.OnCancel();
                 Stop(true);
             }
 
             public override async Task HandleModelShutdown(object model, ShutdownEventArgs reason)
             {
-                _logger.Error($"Consumer {_consumerTag} model is shutdown ({reason})");
+                _logger.Error($"RMQConsumer {_consumerTag} model is shutdown ({reason})");
                 await base.HandleModelShutdown(model, reason);
                 Stop(true);
             }
@@ -78,7 +79,7 @@ namespace FailoverRmq.Consumers.RabbitMq
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, $"Consumer {consumerTag} processed message {deliveryTag} with error");
+                    _logger.Error(ex, $"RMQConsumer {consumerTag} processed message {deliveryTag} with error");
                     Model.BasicNack(deliveryTag, false, true);
                 }
             }
@@ -87,7 +88,7 @@ namespace FailoverRmq.Consumers.RabbitMq
             {
                 if (initializedByRMQ)
                     _stop();
-                _logger.Info($"Consumer {_consumerTag} is stoped");
+                _logger.Info($"RMQConsumer {_consumerTag} is stoped");
                 Model?.Dispose();
             }
         }
@@ -121,26 +122,33 @@ namespace FailoverRmq.Consumers.RabbitMq
                         _basicConsumers.Add(new BasicConsumer(connection.CreateModel(), i, _logger, ProcMessage, ConsumerStoped));
                 else
                     _basicConsumers.Add(new BasicConsumer(connection.CreateModel(), null, _logger, ProcMessage, ConsumerStoped));
+                _logger.Info("RMQConsumer prepeared");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Can't create consumer");
+                _logger.Error(ex, "Can't prepare RMQConsumer");
                 return false;
             }
         }
 
         public virtual bool Run(Action<IAutorepairConsumer> consumerStoped, int? queueParallelizedTo, CancellationToken cancellationToken)
         {
+            _logger.Info("Trying to run RMQConsumer...");
             if (!Prepare(consumerStoped, queueParallelizedTo, cancellationToken))
                 return false;
-            return _basicConsumers.All(c => c.BindToQueue());
+            var run = _basicConsumers.All(c => c.BindToQueue());
+            if (run)
+                _logger.Info("RMQConsumer is running");
+            return run;
         }
 
         public void Stop()
         {
+            _logger.Info("Trying to stop RMQConsumer...");
             foreach (var basicConsumer in _basicConsumers)
                 basicConsumer.Stop(false);
+            _logger.Info("RMQConsumer stoped");
         }
 
         public Task ProcMessage(TMessage message, CancellationToken cancellationToken)
