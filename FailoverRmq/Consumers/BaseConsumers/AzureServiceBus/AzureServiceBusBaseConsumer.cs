@@ -47,9 +47,10 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
 
             public async Task Stop(bool initializedByAzureServiceBus)
             {
+                _logger.Info($"ServiceBusProcessor for queue {_queueName} is stoping...");
                 if (initializedByAzureServiceBus)
                     _stop();
-                _logger.Info($"ServiceBusProcessor for queue {_queueName} is stoped");
+
                 await _processor.StopProcessingAsync();
                 await _processor.DisposeAsync();
             }
@@ -57,7 +58,11 @@ namespace FailoverRmq.Consumers.BaseConsumers.AzureServiceBus
             private async Task _processor_ProcessErrorAsync(ProcessErrorEventArgs arg)
             {
                 _logger.Error(arg.Exception, $"Error ocurred at ServiceBusProcessor for queue {_queueName}. ErrorSource: {arg.ErrorSource}");
-                await Stop(true);
+                if (arg.ErrorSource == ServiceBusErrorSource.AcceptSession || arg.ErrorSource == ServiceBusErrorSource.CloseSession)
+                {
+                    _logger.Error(arg.Exception, $"Stopping ServiceBusProcessor for queue {_queueName}");
+                    await Stop(true);
+                }
             }
 
             private async Task _processor_ProcessMessageAsync(ProcessMessageEventArgs arg)
